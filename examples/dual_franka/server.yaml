@@ -1,2 +1,8 @@
-# Local default: verified full 50k checkpoint.
-extends: server_full.yaml
+mode: server
+# Replace with a FINETUNED new_embodiment checkpoint directory, not raw VLM weights.
+model_path: outputs/dual_franka_cosmos/checkpoint-100000
+embodiment_tag: new_embodiment
+device: cuda
+host: 127.0.0.1
+port: 5555
+strict: true

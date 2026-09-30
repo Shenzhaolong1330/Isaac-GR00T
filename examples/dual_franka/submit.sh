@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# Foreground entry for a four-GPU submitted task; YAML is mandatory.
+# Run this once inside a four-GPU submitted task. No robot interfaces.
 set -euo pipefail
-if (( $# != 1 )); then
-  echo "Usage: bash submit.sh examples/dual_franka/train_{full,lora,freeze}[_resume].yaml" >&2
-  exit 2
-fi
 cd /user/users/szl/szl_ws/Isaac-GR00T
 source examples/dual_franka/env.sh
-python -m examples.dual_franka.preflight --config "$1"
-python -m examples.dual_franka.run --config "$1"
+# With an explicit YAML, run exactly that experiment (no automatic second stage).
+if (( $# > 0 )); then
+  python -m examples.dual_franka.preflight --config "$1"
+  python -m examples.dual_franka.run --config "$1"
+  exit 0
+fi
+python -m examples.dual_franka.preflight --config examples/dual_franka/train_job.yaml
+python -m examples.dual_franka.run --config examples/dual_franka/train_job.yaml
+python -m examples.dual_franka.run --config examples/dual_franka/train_job_resume.yaml

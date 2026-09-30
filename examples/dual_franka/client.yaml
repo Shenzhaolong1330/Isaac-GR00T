@@ -22,8 +22,7 @@ execution:
   gripper_speed: 0.3
   gripper_force: 10
 runtime:
-  mode: robot
-  execute: true
-  iterations: 1000
-  output: null  # Auto-create a timestamped directory for each run.
-  output_root: deployment_records/client_runs
+  mode: replay
+  execute: false
+  iterations: 5
+  output: deployment_records/client_replay

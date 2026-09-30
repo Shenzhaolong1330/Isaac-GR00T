@@ -2,7 +2,6 @@
 
 import argparse
 from contextlib import ExitStack
-from datetime import datetime
 import json
 import logging
 from pathlib import Path
@@ -161,20 +160,9 @@ def run(cfg):
             fixture = observation(
                 data["state"], {k: data[k] for k in CAMERAS}, str(data["text"].item())
             )
-    runtime = cfg["runtime"]
-    output = runtime.get("output")
-    out = (
-        Path(output)
-        if output
-        else (
-            Path(runtime.get("output_root", "deployment_records/client_runs"))
-            / datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        )
-    )
+    out = Path(cfg["runtime"]["output"])
     out.mkdir(parents=True, exist_ok=False)
-    resolved = {**cfg, "runtime": {**runtime, "output": str(out)}}
-    (out / "config.json").write_text(json.dumps(resolved, indent=2))
-    print(f"[OUTPUT] {out.resolve()}", flush=True)
+    (out / "config.json").write_text(json.dumps(cfg, indent=2))
     with ExitStack() as resources:
         client = Client(cfg["server"])
         resources.callback(cleanup, client)
@@ -237,11 +225,6 @@ def run(cfg):
                     + "\n"
                 )
                 log.flush()
-                print(
-                    f"[INFER] {step + 1}/{iterations}: {latency * 1000:.1f} ms, "
-                    f"executed={rpc is not None}",
-                    flush=True,
-                )
 
 
 def main():

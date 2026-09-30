@@ -1,0 +1,7 @@
+mode: server
+model_path: checkpoints/GR00T-N1.7-3B
+embodiment_tag: oxe_droid_relative_eef_relative_joint
+device: cuda
+host: 127.0.0.1
+port: 5555
+strict: true

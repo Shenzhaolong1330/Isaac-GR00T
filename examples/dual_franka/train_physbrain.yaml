@@ -1,0 +1,8 @@
+extends: train_cosmos.yaml
+model:
+  model_name: checkpoints/PhysBrain1.5-2B-gr00t
+  # Pretrained PhysBrain backbone + NEW random GR00T AE, not official Cosmos VLA weights.
+  select_layer: 16
+training:
+  start_from_checkpoint: null
+  output_dir: outputs/dual_franka_physbrain

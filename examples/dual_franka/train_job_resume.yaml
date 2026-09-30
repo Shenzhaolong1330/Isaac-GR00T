@@ -1,0 +1,5 @@
+extends: train_job.yaml
+training:
+  resume_from_checkpoint: true
+deployment:
+  stop_after_step: null
