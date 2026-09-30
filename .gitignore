@@ -171,6 +171,7 @@ offline_open_loop_eval_plots/
 
 # Machine-local GR00T deployment assets
 /checkpoints/
+/checkpoints
 /deployment_records/
 /datasets/
 *.local.yaml
