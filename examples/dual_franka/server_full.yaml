@@ -1,5 +1,5 @@
 mode: server
-model_path: checkpoints/dual_franka_full_100k
+model_path: checkpoints/dual_franka_full_40k
 embodiment_tag: new_embodiment
 device: cuda
 host: 127.0.0.1
