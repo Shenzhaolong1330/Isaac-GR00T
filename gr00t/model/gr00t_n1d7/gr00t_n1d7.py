@@ -494,7 +494,18 @@ def get_backbone_cls(config: Gr00tN1d7Config):
 
         return Qwen3Backbone
     else:
-        raise ValueError(f"Unsupported model name: {config.model_name}")
+        import json
+        from pathlib import Path
+
+        local_config = Path(config.model_name) / "config.json"
+        if (
+            local_config.is_file()
+            and json.loads(local_config.read_text()).get("model_type") == "qwen3_vl"
+        ):
+            from gr00t.model.modules.qwen3_backbone import Qwen3Backbone
+
+            return Qwen3Backbone
+        raise ValueError(f"Unsupported model name: {config.model_name}; expected Qwen3-VL config")
 
 
 class Gr00tN1d7(PreTrainedModel):
@@ -538,6 +549,7 @@ class Gr00tN1d7(PreTrainedModel):
             tune_top_llm_layers=config.tune_top_llm_layers,
             trainable_params_fp32=config.backbone_trainable_params_fp32,
             transformers_loading_kwargs=transformers_loading_kwargs,
+            backbone_config=config.backbone_config,
         )
 
         # Initialize action head
@@ -549,6 +561,17 @@ class Gr00tN1d7(PreTrainedModel):
             model_type=config.backbone_model_type,
             transformers_loading_kwargs=transformers_loading_kwargs,
         )
+
+        from gr00t.model.modules.trainability import configure_trainability
+
+        configure_trainability(self, config)
+
+    def train(self, mode: bool = True):
+        super().train(mode)
+        from gr00t.model.modules.trainability import keep_frozen_modules_eval
+
+        keep_frozen_modules_eval(self)
+        return self
 
     def prepare_input(self, inputs: dict) -> Tuple[BatchFeature, BatchFeature]:
         """Prepare inputs for backbone and action head."""

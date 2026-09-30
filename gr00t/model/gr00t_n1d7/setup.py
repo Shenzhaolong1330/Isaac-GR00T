@@ -125,6 +125,20 @@ class Gr00tN1d7Pipeline(ModelPipeline):
                 transformers_loading_kwargs=self.transformers_loading_kwargs,
             )
 
+        if self.config.training.start_from_checkpoint is not None and not skip_weight_loading:
+            from gr00t.model.modules.trainability import POLICY_FIELDS
+
+            changed = [
+                name
+                for name in POLICY_FIELDS
+                if getattr(model.config, name) != getattr(self.config.model, name)
+            ]
+            if changed:
+                raise ValueError(
+                    f"Checkpoint training policy differs: {changed}. "
+                    "Use matching configuration for resume; initialize new experiments from the base VLM."
+                )
+
         logging.debug(f"Model Config: {model.config}")
         with run_or_wait_on_rank0(label="final_model_config.json write") as is_rank0:
             if is_rank0:

@@ -1,0 +1,13 @@
+extends: train_full.yaml
+training:
+  max_steps: 100000
+  warmup_steps: 1000
+  output_dir: /user/users/szl/runs/gr00t_n17/physbrain16_full_ae_full_b64_100k
+  resume_from_checkpoint: /user/users/szl/runs/gr00t_n17/physbrain16_full_ae_full_b64_50k/checkpoint-50000
+  save_total_limit: 6
+deployment:
+  wandb_id: franka16-full-ae-full-b64-100k
+  continuation_schedule:
+    start_step: 50000
+    steps: 50000
+    warmup_steps: 1000

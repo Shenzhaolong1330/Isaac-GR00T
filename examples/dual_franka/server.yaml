@@ -1,0 +1,2 @@
+# Local default: verified full 50k checkpoint.
+extends: server_full.yaml

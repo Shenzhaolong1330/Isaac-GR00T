@@ -40,6 +40,19 @@ class Gr00tN1d7Config(PretrainedConfig):
     model_name: str = "nvidia/Cosmos-Reason2-2B"
     backbone_model_type: str = "qwen"
     model_revision: str | None = None
+    backbone_config: dict | None = None  # Embedded architecture for offline exports.
+    # None preserves upstream tune_* behavior for existing configurations.
+    vlm_mode: str | None = None  # full / lora / freeze
+    ae_trainable: bool = True
+    lora_rank: int = 16
+    lora_alpha: int = 32
+    lora_dropout: float = 0.05
+    lora_target_modules: list[str] = field(
+        default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj"]
+    )
+    lora_layers: list[int] | None = None  # Zero-based indices among retained layers.
+    trainable_include: list[str] | None = None  # Intersect with mode-selected parameters.
+    trainable_exclude: list[str] = field(default_factory=list)  # Exclusions win.
     tune_top_llm_layers: int = 0  # Number of top LLM layers to tune
     backbone_embedding_dim: int = 2048  # project_to_dim; must match Cosmos-Reason2-2B hidden size
     tune_llm: bool = False

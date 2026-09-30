@@ -1,0 +1,29 @@
+# Default hardware-free replay. For physical execution change mode AND execute below.
+server:
+  host: 127.0.0.1
+  port: 5555
+  timeout_ms: 30000
+fixture: deployment_records/data_validation/replay_fixture.npz
+robot:
+  ip: 172.16.0.1
+  port: 4242
+  go_home_duration_sec: 5.0
+cameras:
+  head: '348522072761'
+  left_wrist: '347622074336'
+  right_wrist: '337322072568'
+task: use both arms to pick up a test tube and place it into the test tube rack
+execution:
+  action_fps: 30
+  execute_horizon: 10
+  close_threshold_m: 0.03
+  max_pos_delta: 0.3
+  max_rot_delta: 0.12
+  gripper_speed: 0.3
+  gripper_force: 10
+runtime:
+  mode: robot
+  execute: true
+  iterations: 1000
+  output: null  # Auto-create a timestamped directory for each run.
+  output_root: deployment_records/client_runs

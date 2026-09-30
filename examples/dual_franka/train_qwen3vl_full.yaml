@@ -1,0 +1,10 @@
+extends: train_full.yaml
+model:
+  model_name: checkpoints/Qwen3-VL-2B-Instruct-gr00t
+training:
+  output_dir: /user/users/szl/runs/gr00t_n17/qwen3vl2b16_full_ae_full_b64_50k
+  resume_from_checkpoint: false
+  start_from_checkpoint: null
+  save_total_limit: 6
+deployment:
+  wandb_id: franka-qwen3vl2b16-full-ae-full-b64-50k

@@ -298,6 +298,9 @@ class PolicyClient(BasePolicy):
 
     def _init_socket(self):
         """Initialize or reinitialize the socket with current settings"""
+        previous = getattr(self, "socket", None)
+        if previous is not None:
+            previous.close(linger=0)
         self.socket = self.context.socket(zmq.REQ)
         self.socket.setsockopt(zmq.RCVTIMEO, self.timeout_ms)
         self.socket.setsockopt(zmq.SNDTIMEO, self.timeout_ms)

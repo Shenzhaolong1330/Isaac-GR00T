@@ -146,6 +146,7 @@ class Qwen3Backbone(torch.nn.Module):
         tune_top_llm_layers: int = 0,
         trainable_params_fp32: bool = False,
         transformers_loading_kwargs: dict = {},
+        backbone_config: dict | None = None,
     ):
         """
         Qwen3Backbone is to generate n_queries to represent the future action hidden states.
@@ -180,11 +181,15 @@ class Qwen3Backbone(torch.nn.Module):
             extra_kwargs["torch_dtype"] = torch.bfloat16
 
         try:
-            self.model = Qwen3VLForConditionalGeneration.from_pretrained(
-                model_name,
-                **extra_kwargs,
-                **transformers_loading_kwargs,
-            ).eval()
+            if backbone_config is not None:
+                from transformers import Qwen3VLConfig
+                architecture = Qwen3VLConfig.from_dict(backbone_config)
+                architecture._attn_implementation = extra_kwargs.get("attn_implementation", "sdpa")
+                self.model = Qwen3VLForConditionalGeneration(architecture).eval()
+            else:
+                self.model = Qwen3VLForConditionalGeneration.from_pretrained(
+                    model_name, **extra_kwargs, **transformers_loading_kwargs,
+                ).eval()
         except Exception as exc:
             if _is_gated_repo_error(exc):
                 raise RuntimeError(_GATED_BACKBONE_HINT.format(model_name=model_name)) from exc

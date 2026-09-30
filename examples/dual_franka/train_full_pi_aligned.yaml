@@ -1,0 +1,30 @@
+# Independent PhysBrain16 + new GR00T AE; OpenPI optimizer and batch, GR00T data/loss.
+extends: train_full.yaml
+training:
+  global_batch_size: 128
+  gradient_accumulation_steps: 1
+  num_gpus: 4
+  max_steps: 100000
+  optim: adamw_torch_fused
+  learning_rate: 1.0e-5
+  adam_beta1: 0.9
+  adam_beta2: 0.95
+  adam_epsilon: 1.0e-8
+  weight_decay: 1.0e-10
+  weight_decay_all_parameters: true
+  max_grad_norm: 1.0
+  lr_scheduler_type: cosine
+  lr_schedule_style: openpi_cosine
+  warmup_steps: 100
+  warmup_ratio: 0.0
+  lr_decay_steps: 100000
+  lr_min: 1.0e-6
+  start_from_checkpoint: null
+  resume_from_checkpoint: false
+  save_steps: 10000
+  save_total_limit: 10
+  output_dir: /user/users/szl/runs/gr00t_n17/physbrain16_full_ae_full_pi_aligned_b128_100k
+deployment:
+  expected_global_batch_size: 128
+  continuation_schedule: null
+  wandb_id: franka16-full-ae-full-pi-aligned-b128-100k

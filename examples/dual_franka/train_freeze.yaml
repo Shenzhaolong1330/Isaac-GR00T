@@ -1,0 +1,21 @@
+extends: train_job.yaml
+model:
+  vlm_mode: freeze
+  ae_trainable: true
+  trainable_include: null
+  trainable_exclude: []
+  lora_rank: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  lora_target_modules: [q_proj, k_proj, v_proj, o_proj]
+  lora_layers: null
+training:
+  max_steps: 50000
+  warmup_ratio: 0.02
+  save_steps: 10000
+  output_dir: /user/users/szl/runs/gr00t_n17/physbrain16_freeze_ae_full_b64_50k
+  experiment_name: null
+deployment:
+  stop_after_step: null
+  validation_interval: 1000
+  wandb_id: franka16-freeze-ae-full-b64-50k

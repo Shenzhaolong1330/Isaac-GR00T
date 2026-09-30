@@ -44,6 +44,14 @@ class TrainingConfig:
     # Optimization
     learning_rate: float = 1e-4
     lr_scheduler_type: str = "cosine"
+    # Native Transformers behavior remains the default for existing experiments.
+    lr_schedule_style: str = "native"  # native | openpi_cosine
+    lr_min: float = 0.0
+    lr_decay_steps: Optional[int] = None
+    adam_beta1: float = 0.9
+    adam_beta2: float = 0.999
+    adam_epsilon: float = 1e-8
+    weight_decay_all_parameters: bool = False
     weight_decay: float = 1e-5
     warmup_ratio: float = 0.05
     warmup_steps: int = 0  # this will override warmup_ratio
@@ -73,7 +81,7 @@ class TrainingConfig:
     save_only_model: bool = False  # Skip optimizer/scheduler/RNG states — cannot resume training
 
     # Default False so a rerun against an existing output_dir starts fresh.
-    resume_from_checkpoint: bool = False
+    resume_from_checkpoint: bool | str = False
 
     # Checkpoint uploading
     upload_checkpoints: bool = False
@@ -149,6 +157,22 @@ class TrainingConfig:
         return global_batch * self.gradient_accumulation_steps
 
     def __post_init__(self) -> None:
+        if not (0 <= self.adam_beta1 < 1 and 0 <= self.adam_beta2 < 1):
+            raise ValueError("Adam beta values must be in [0, 1)")
+        if self.adam_epsilon <= 0:
+            raise ValueError("adam_epsilon must be positive")
+        if self.lr_schedule_style not in ("native", "openpi_cosine"):
+            raise ValueError("Unknown lr_schedule_style")
+        if self.lr_schedule_style == "openpi_cosine":
+            decay_steps = self.lr_decay_steps or self.max_steps
+            if not (0 < self.warmup_steps < decay_steps and 0 <= self.lr_min <= self.learning_rate):
+                raise ValueError(
+                    "OpenPI cosine requires 0 < warmup_steps < decay_steps and 0 <= lr_min <= learning_rate"
+                )
+            if self.learning_rate <= 0 or self.lr_scheduler_type != "cosine":
+                raise ValueError(
+                    "OpenPI cosine requires positive learning_rate and lr_scheduler_type=cosine"
+                )
         if self.gradient_accumulation_steps < 1:
             raise ValueError(
                 f"gradient_accumulation_steps must be >= 1, got {self.gradient_accumulation_steps}"

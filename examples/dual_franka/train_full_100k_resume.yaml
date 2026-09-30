@@ -1,0 +1,3 @@
+extends: train_full_100k.yaml
+training:
+  resume_from_checkpoint: true

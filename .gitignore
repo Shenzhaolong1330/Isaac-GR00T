@@ -168,3 +168,18 @@ offline_open_loop_eval_plots/
 # Generic model/data folders
 /models
 /data
+
+# Machine-local GR00T deployment assets
+/checkpoints/
+/deployment_records/
+/datasets/
+*.local.yaml
+
+/runtime/
+
+# Large model artifacts kept outside source control.
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.onnx

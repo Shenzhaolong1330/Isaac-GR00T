@@ -106,7 +106,9 @@ class Gr00tPolicy(BasePolicy):
         model_dir = Path(model_path)
 
         # Load the pretrained model and move to target device with bfloat16 precision
-        model = AutoModel.from_pretrained(model_dir)
+        local_vlm = model_dir / "vlm"
+        local_options = {"model_name": str(local_vlm), "local_files_only": True} if local_vlm.is_dir() else {}
+        model = AutoModel.from_pretrained(model_dir, **local_options)
         model.eval()  # Set model to evaluation mode
         model.to(device=device, dtype=torch.bfloat16)
         self.model = model
@@ -121,7 +123,7 @@ class Gr00tPolicy(BasePolicy):
             and not (model_dir / "processor_config.json").exists()
             else model_dir
         )
-        self.processor: BaseProcessor = AutoProcessor.from_pretrained(processor_dir)
+        self.processor: BaseProcessor = AutoProcessor.from_pretrained(processor_dir, **local_options)
         self.processor.eval()
 
         # Store embodiment-specific configurations
@@ -413,7 +415,13 @@ class Gr00tPolicy(BasePolicy):
         collated_inputs = _rec_to_dtype(collated_inputs, dtype=torch.bfloat16)
 
         # Step 4: Run model inference to predict actions
-        with torch.inference_mode():
+        seed = (options or {}).get("seed")
+        if seed is not None and (not isinstance(seed, int) or not 0 <= seed < 2**63):
+            raise ValueError("seed must be an integer in [0, 2**63)")
+        devices = [self.model.device.index] if self.model.device.type == "cuda" else []
+        with torch.random.fork_rng(devices=devices, enabled=seed is not None), torch.inference_mode():
+            if seed is not None:
+                torch.manual_seed(seed)
             model_pred = self.model.get_action(**collated_inputs)
         normalized_action = model_pred["action_pred"].float()
 

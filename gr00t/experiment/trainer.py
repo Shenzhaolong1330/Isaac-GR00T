@@ -30,6 +30,7 @@ pipeline is bottlenecked by data loading or by the model's computation.
 from __future__ import annotations
 
 import logging
+import math
 import os
 import queue
 import threading
@@ -162,9 +163,41 @@ class Gr00tTrainer(Trainer):
         Args:
             *args: Positional arguments forwarded to ``Trainer``.
         """
+        self.optimization_config = kwargs.pop("optimization_config", None)
         self.action_offset = kwargs.pop("action_offset", None)
         self.multiprocessing_context = kwargs.pop("multiprocessing_context", "fork")
         super().__init__(*args, **kwargs)
+
+    def get_decay_parameter_names(self, model):
+        if self.optimization_config and self.optimization_config.weight_decay_all_parameters:
+            # OpenPI passes no decay mask: bias and norm parameters are included.
+            return [name for name, _ in model.named_parameters()]
+        return super().get_decay_parameter_names(model)
+
+    def create_scheduler(self, num_training_steps: int, optimizer=None):
+        cfg = self.optimization_config
+        if cfg is None or cfg.lr_schedule_style == "native":
+            return super().create_scheduler(num_training_steps, optimizer)
+        if self.lr_scheduler is None:
+            warmup = cfg.warmup_steps
+            decay = cfg.lr_decay_steps or num_training_steps
+            if not 0 < warmup < decay:
+                raise ValueError("OpenPI cosine requires 0 < warmup < decay steps")
+            floor = cfg.lr_min / self.args.learning_rate
+            initial = 1.0 / (warmup + 1)
+
+            def factor(step):
+                # Matches optax.warmup_cosine_decay_schedule, including update zero.
+                if step < warmup:
+                    return initial + (1.0 - initial) * step / warmup
+                progress = min(1.0, max(0.0, (step - warmup) / (decay - warmup)))
+                return floor + (1.0 - floor) * 0.5 * (1.0 + math.cos(math.pi * progress))
+
+            self.lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
+                optimizer if optimizer is not None else self.optimizer, factor
+            )
+            self._created_lr_scheduler = True
+        return self.lr_scheduler
 
     def log(self, logs: dict[str, float], start_time: Optional[float] = None) -> None:
         # Hide epoch from logged metrics as it's misleading for Iterable datasets.

@@ -189,7 +189,7 @@ def save_initial_actions_artifact(train_dataset, save_cfg_dir: Path):
     logging.info(f"Saved {len(initial_actions)} initial actions to {initial_actions_path}")
 
 
-def run(config: Config):
+def run(config: Config, trainer_setup=None):
     """Main training function."""
     warn_configs(config)
     check_resume_compatibility(config.training)
@@ -275,6 +275,9 @@ def run(config: Config):
         per_device_eval_batch_size=config.training.eval_batch_size,
         gradient_accumulation_steps=config.training.gradient_accumulation_steps,
         learning_rate=config.training.learning_rate,
+        adam_beta1=config.training.adam_beta1,
+        adam_beta2=config.training.adam_beta2,
+        adam_epsilon=config.training.adam_epsilon,
         lr_scheduler_type=config.training.lr_scheduler_type,
         weight_decay=config.training.weight_decay,
         warmup_ratio=config.training.warmup_ratio,
@@ -310,6 +313,7 @@ def run(config: Config):
         eval_dataset=eval_dataset,
         data_collator=data_collator,
         multiprocessing_context=config.data.multiprocessing_context,
+        optimization_config=config.training,
     )
 
     trainer.add_callback(
@@ -332,6 +336,9 @@ def run(config: Config):
 
     if hasattr(train_dataset, "get_initial_actions"):
         run_on_rank0(save_initial_actions_artifact, train_dataset, save_cfg_dir)
+
+    if trainer_setup is not None:
+        trainer_setup(trainer, pipeline, config)
 
     # Train
     logging.info("🚀 Starting training...")
