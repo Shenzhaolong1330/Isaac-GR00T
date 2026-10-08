@@ -1,10 +1,12 @@
 """Import/version check; optional tiny CUDA calculation, no model or robot loading."""
+
 import argparse
 import importlib
 import importlib.metadata
 import json
-import platform
 from pathlib import Path
+import platform
+
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
@@ -12,12 +14,21 @@ if __name__ == "__main__":
     p.add_argument("--report", default="deployment_records/environment.json")
     a = p.parse_args()
     report = {"python": platform.python_version(), "packages": {}}
-    for name, module in [("torch", "torch"), ("transformers", "transformers"),
-                         ("torchcodec", "torchcodec"), ("flash-attn", "flash_attn"),
-                         ("deepspeed", "deepspeed"), ("gr00t", "gr00t")]:
+    for name, module in [
+        ("torch", "torch"),
+        ("transformers", "transformers"),
+        ("torchcodec", "torchcodec"),
+        ("flash-attn", "flash_attn"),
+        ("deepspeed", "deepspeed"),
+        ("gr00t", "gr00t"),
+    ]:
         mod = importlib.import_module(module)
-        report["packages"][name] = {"version": importlib.metadata.version(name), "path": mod.__file__}
+        report["packages"][name] = {
+            "version": importlib.metadata.version(name),
+            "path": mod.__file__,
+        }
     import torch
+
     if a.cuda:
         x = torch.ones((32, 32), device="cuda", dtype=torch.bfloat16)
         y = x @ x

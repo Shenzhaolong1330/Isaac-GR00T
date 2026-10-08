@@ -13,11 +13,26 @@ KEYS = ["left_ee", "right_ee", "left_gripper", "right_gripper"]
 SLICES = [(0, 6), (6, 12), (12, 13), (13, 14)]
 
 
+def load_config(path):
+    """Direct replay can share the active server's checkpoint selection."""
+    path = Path(path)
+    config = yaml.safe_load(path.read_text())
+    if config["mode"] == "direct" and config.get("server_config"):
+        if "checkpoint" in config:
+            raise ValueError("Choose server_config or checkpoint, not both")
+        server = yaml.safe_load((path.parent / config["server_config"]).read_text())
+        if server.get("mode") != "server":
+            raise ValueError("server_config must refer to a policy server configuration")
+        config["checkpoint"] = server["model_path"]
+        config.setdefault("device", server.get("device", "cuda"))
+    return config
+
+
 def main():
     a = argparse.ArgumentParser()
     a.add_argument("--config", required=True)
     args = a.parse_args()
-    c = yaml.safe_load(Path(args.config).read_text())
+    c = load_config(args.config)
     f = np.load(c["fixture"], allow_pickle=False)
     state = f["state"].astype(np.float32)
     assert state.shape == (14,) and np.isfinite(state).all()

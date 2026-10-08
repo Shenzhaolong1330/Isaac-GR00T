@@ -1,8 +1,0 @@
-mode: remote
-checkpoint: checkpoints/dual_franka_full_50k
-fixture: deployment_records/data_validation/replay_fixture.npz
-host: 127.0.0.1
-port: 5555
-seed: 42
-repeats: 3
-output: deployment_records/replay_full_remote

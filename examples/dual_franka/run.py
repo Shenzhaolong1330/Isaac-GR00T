@@ -53,7 +53,7 @@ def main():
         return
     if mode != "train":
         raise ValueError(f"Unknown mode {mode}")
-    from examples.dual_franka import modality
+    from examples.dual_franka.support import modality
     from gr00t.configs.base_config import Config
 
     config = Config().load_dict(raw)
@@ -176,7 +176,7 @@ def main():
         os.environ["WANDB_RESUME"] = "allow"
         os.environ["WANDB_MODE"] = "online"
         os.environ["WANDB_INIT_TIMEOUT"] = str(deployment.get("wandb_init_timeout_seconds", 180))
-    from examples.dual_franka.training_support import configure_trainer
+    from examples.dual_franka.support.training_support import configure_trainer
     from gr00t.experiment.experiment import run
 
     run(

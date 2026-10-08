@@ -2,12 +2,13 @@
 
 import argparse
 from contextlib import ExitStack
+from datetime import datetime
 import json
 import logging
 from pathlib import Path
 import time
 
-from examples.dual_franka.robot_control import (
+from examples.dual_franka.support.robot_control import (
     check_state,
     execute_chunk,
     execution_commands,
@@ -161,7 +162,10 @@ def run(cfg):
                 data["state"], {k: data[k] for k in CAMERAS}, str(data["text"].item())
             )
     out = Path(cfg["runtime"]["output"])
+    if cfg["runtime"].get("timestamp_output", False):
+        out = out / datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     out.mkdir(parents=True, exist_ok=False)
+    print(f"[OUTPUT] {out.resolve()}", flush=True)
     (out / "config.json").write_text(json.dumps(cfg, indent=2))
     with ExitStack() as resources:
         client = Client(cfg["server"])
@@ -169,7 +173,7 @@ def run(cfg):
         rpc = None
         cameras = {}
         if mode == "robot":
-            from examples.dual_franka import dual_franka_robotiq_rpc_client as sdk
+            from examples.dual_franka.support import dual_franka_robotiq_rpc_client as sdk
 
             for key in CAMERAS:
                 cameras[key] = Camera(cfg["cameras"][key])

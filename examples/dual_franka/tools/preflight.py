@@ -82,7 +82,7 @@ def main():
     assert torch.cuda.device_count() == 4, "Exactly four visible GPUs are required"
     assert Path(sys.executable).resolve().is_relative_to("/user/users/szl/envs")
     subprocess.run(
-        [sys.executable, "-m", "examples.dual_franka.check_environment", "--cuda"], check=True
+        [sys.executable, "-m", "examples.dual_franka.tools.check_environment", "--cuda"], check=True
     )
     subprocess.run(
         [sys.executable, "-m", "examples.dual_franka.run", "--config", args.config, "--check"],
@@ -101,7 +101,7 @@ def main():
             "--standalone",
             "--nproc_per_node=4",
             "-m",
-            "examples.dual_franka.preflight",
+            "examples.dual_franka.tools.preflight",
             "--config",
             args.config,
             "--distributed",

@@ -6,7 +6,7 @@ import math
 from pathlib import Path
 import time
 
-from examples.dual_franka.modality import CONFIG, KEYS
+from examples.dual_franka.support.modality import CONFIG, KEYS
 from gr00t.data.dataset.lerobot_episode_loader import LeRobotEpisodeLoader
 from gr00t.data.dataset.sharded_single_step_dataset import extract_step_data
 from gr00t.data.types import EmbodimentTag, MessageType

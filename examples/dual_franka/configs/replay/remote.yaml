@@ -1,5 +1,5 @@
+# The running server determines the checkpoint. No local checkpoint is loaded.
 mode: remote
-checkpoint: checkpoints/dual_franka_physbrain16_smoke1000
 fixture: deployment_records/data_validation/replay_fixture.npz
 host: 127.0.0.1
 port: 5555

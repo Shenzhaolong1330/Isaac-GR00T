@@ -1,36 +1,62 @@
+import importlib.util
 import json
 from pathlib import Path
 import tempfile
 import unittest
 
-import importlib.util
 
 def load_example(name):
     path = Path(__file__).parents[1] / "examples/dual_franka" / f"{name}.py"
+    if not path.is_file():
+        path = path.parent / "tools" / path.name
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
 
 read_config = load_example("run").read_config
 prepare = load_example("prepare_physbrain").prepare
 
 
 class DeploymentConfigTest(unittest.TestCase):
+    def test_direct_replay_tracks_server_checkpoint(self):
+        load_config = load_example("replay").load_config
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "replay").mkdir()
+            server = root / "server.yaml"
+            client = root / "replay/direct.yaml"
+            client.write_text("mode: direct\nserver_config: ../server.yaml\n")
+            for checkpoint in ("checkpoints/full", "checkpoints/lora"):
+                server.write_text(f"mode: server\nmodel_path: {checkpoint}\ndevice: cuda\n")
+                cfg = load_config(client)
+                self.assertEqual(cfg["checkpoint"], checkpoint)
+                self.assertEqual(cfg["device"], "cuda")
+            client.write_text(
+                "mode: direct\nserver_config: ../server.yaml\ncheckpoint: ambiguous\n"
+            )
+            with self.assertRaises(ValueError):
+                load_config(client)
+
     def test_yaml_inheritance_and_initialization(self):
-        cfg = read_config("examples/dual_franka/train_physbrain.yaml")
+        cfg = read_config("examples/dual_franka/configs/train/train_full.yaml")
         self.assertIsNone(cfg["training"]["start_from_checkpoint"])
         self.assertEqual(cfg["training"]["global_batch_size"], 64)
         self.assertEqual(cfg["model"]["model_name"], "checkpoints/PhysBrain1.5-2B-gr00t")
         self.assertFalse(cfg["model"]["use_relative_action"])
 
-    def test_job_resume_keeps_schedule_and_run(self):
-        first = read_config("examples/dual_franka/train_job.yaml")
-        resumed = read_config("examples/dual_franka/train_job_resume.yaml")
+    def test_full_resume_keeps_schedule_and_run(self):
+        first = read_config("examples/dual_franka/configs/train/train_full.yaml")
+        resumed = read_config("examples/dual_franka/configs/train/train_full_resume.yaml")
         self.assertEqual(first["training"]["num_gpus"], 4)
-        self.assertEqual(first["training"]["global_batch_size"] * first["training"]["gradient_accumulation_steps"], 64)
-        self.assertEqual(first["training"]["max_steps"], 1000)
-        self.assertEqual(first["deployment"]["stop_after_step"], 500)
+        self.assertEqual(
+            first["training"]["global_batch_size"]
+            * first["training"]["gradient_accumulation_steps"],
+            64,
+        )
+        self.assertEqual(first["training"]["max_steps"], 50000)
+        self.assertIsNone(first["deployment"]["stop_after_step"])
         self.assertIsNone(resumed["deployment"]["stop_after_step"])
         self.assertTrue(resumed["training"]["resume_from_checkpoint"])
         self.assertEqual(first["training"]["output_dir"], resumed["training"]["output_dir"])
@@ -38,23 +64,30 @@ class DeploymentConfigTest(unittest.TestCase):
         self.assertFalse(first["data"]["allow_padding"])
 
     def test_rank_zero_metrics_do_not_change_trainer_control(self):
-        from types import SimpleNamespace
         # Load the actual pure logging method without initializing model imports.
         import ast
-        source = Path(__file__).parents[1] / "examples/dual_franka/training_support.py"
+        from types import SimpleNamespace
+
+        source = Path(__file__).parents[1] / "examples/dual_franka/support/training_support.py"
         tree = ast.parse(source.read_text())
-        cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "AcceptanceCallback")
-        method = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "log_metrics")
+        cls = next(
+            n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "AcceptanceCallback"
+        )
+        method = next(
+            n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "log_metrics"
+        )
         scope = {}
         exec(compile(ast.Module(body=[method], type_ignores=[]), str(source), "exec"), scope)
         callback = SimpleNamespace()
         control = SimpleNamespace(should_log=True)
+
         def forbidden_log(*args, **kwargs):
             control.should_log = False
             self.fail("Rank-zero-only metrics must not invoke Trainer.log")
+
         callback.trainer = SimpleNamespace(
-            state=SimpleNamespace(global_step=2, log_history=[]),
-            control=control, log=forbidden_log)
+            state=SimpleNamespace(global_step=2, log_history=[]), control=control, log=forbidden_log
+        )
         callback.config = SimpleNamespace(training=SimpleNamespace(use_wandb=False))
         scope["log_metrics"](callback, {"update/vision/sample_max_change": 0.1})
         self.assertTrue(control.should_log)
@@ -71,13 +104,24 @@ class DeploymentConfigTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             src, dst = Path(tmp) / "original", Path(tmp) / "compatible"
             src.mkdir()
-            config = {"model_type": "qwen3_vl", "text_config": {"rope_parameters": {
-                "rope_type": "default", "rope_theta": 5000000,
-                "mrope_section": [24, 20, 20], "mrope_interleaved": True}}}
+            config = {
+                "model_type": "qwen3_vl",
+                "text_config": {
+                    "rope_parameters": {
+                        "rope_type": "default",
+                        "rope_theta": 5000000,
+                        "mrope_section": [24, 20, 20],
+                        "mrope_interleaved": True,
+                    }
+                },
+            }
             original = json.dumps(config)
             (src / "config.json").write_text(original)
             (src / "model.safetensors").write_bytes(b"unchanged")
-            tokens = {"extra_special_tokens": ["<action>", "</action>"], "additional_special_tokens": ["<action>"]}
+            tokens = {
+                "extra_special_tokens": ["<action>", "</action>"],
+                "additional_special_tokens": ["<action>"],
+            }
             (src / "tokenizer_config.json").write_text(json.dumps(tokens))
             prepare(src, dst)
             tokenizer = json.loads((dst / "tokenizer_config.json").read_text())
@@ -111,7 +155,9 @@ class WandbPreflightTest(unittest.TestCase):
     def test_transport_retry_queries_only_target_project(self):
         from types import SimpleNamespace
         from unittest.mock import Mock
+
         import requests
+
         cfg = {"deployment": {"wandb_entity": "team"}, "training": {"wandb_project": "target"}}
         api = Mock(viewer=True)
         api.project.side_effect = [requests.exceptions.ReadTimeout(), SimpleNamespace(id="id")]
@@ -125,9 +171,13 @@ class WandbPreflightTest(unittest.TestCase):
 
     def test_timeout_stops_after_configured_attempts(self):
         from unittest.mock import Mock
+
         import requests
-        cfg = {"deployment": {"wandb_entity": "team", "wandb_check_attempts": 2},
-               "training": {"wandb_project": "target"}}
+
+        cfg = {
+            "deployment": {"wandb_entity": "team", "wandb_check_attempts": 2},
+            "training": {"wandb_project": "target"},
+        }
         factory = Mock(side_effect=requests.exceptions.ReadTimeout())
         with self.assertRaisesRegex(RuntimeError, "network check failed"):
             load_example("preflight").check_wandb_access(cfg, api_factory=factory, sleep=Mock())
@@ -135,6 +185,7 @@ class WandbPreflightTest(unittest.TestCase):
 
     def test_authentication_error_is_not_retried(self):
         from unittest.mock import Mock
+
         cfg = {"deployment": {"wandb_entity": "team"}, "training": {"wandb_project": "target"}}
         api = Mock(viewer=False)
         factory, sleep = Mock(return_value=api), Mock()

@@ -1,7 +1,0 @@
-mode: server
-model_path: checkpoints/dual_franka_lora_50k
-embodiment_tag: new_embodiment
-device: cuda
-host: 127.0.0.1
-port: 5555
-strict: true

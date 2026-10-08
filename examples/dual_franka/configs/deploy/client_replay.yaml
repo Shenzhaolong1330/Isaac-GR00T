@@ -1,0 +1,12 @@
+# Hardware-free replay of one saved observation. Never opens cameras or robots.
+server:
+  host: 127.0.0.1
+  port: 5555
+  timeout_ms: 30000
+fixture: deployment_records/data_validation/replay_fixture.npz
+runtime:
+  mode: replay
+  execute: false
+  iterations: 5
+  output: deployment_records/client_replay
+  timestamp_output: true

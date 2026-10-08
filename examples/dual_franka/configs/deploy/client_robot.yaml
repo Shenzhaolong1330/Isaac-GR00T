@@ -1,9 +1,8 @@
-# Default hardware-free replay. For physical execution change mode AND execute below.
+# Real robot execution: starts and finishes with the existing home/open sequence.
 server:
   host: 127.0.0.1
   port: 5555
   timeout_ms: 30000
-fixture: deployment_records/data_validation/replay_fixture.npz
 robot:
   ip: 172.16.0.1
   port: 4242
@@ -22,7 +21,8 @@ execution:
   gripper_speed: 0.3
   gripper_force: 10
 runtime:
-  mode: replay
-  execute: false
-  iterations: 5
-  output: deployment_records/client_replay
+  mode: robot
+  execute: true
+  iterations: 100
+  output: deployment_records/robot_runs
+  timestamp_output: true

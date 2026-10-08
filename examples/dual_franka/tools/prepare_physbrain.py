@@ -1,4 +1,5 @@
 """Create a Transformers4.57-compatible metadata view; original weights stay unchanged."""
+
 import argparse
 import json
 from pathlib import Path
@@ -12,7 +13,9 @@ def tokenizer_compatibility(source, output):
     cfg = json.loads(src.read_text())
     extra = cfg.pop("extra_special_tokens", None)
     if isinstance(extra, list):
-        cfg["additional_special_tokens"] = list(dict.fromkeys(cfg.get("additional_special_tokens", []) + extra))
+        cfg["additional_special_tokens"] = list(
+            dict.fromkeys(cfg.get("additional_special_tokens", []) + extra)
+        )
         target = output / "tokenizer_config.json"
         if target.is_symlink():
             target.unlink()
@@ -43,10 +46,16 @@ def prepare(source, output):
             (output / file.name).symlink_to(file)
     tokenizer_compatibility(source, output)
     (output / "config.json").write_text(json.dumps(cfg, indent=2))
-    (output / "compatibility.json").write_text(json.dumps({
-        "source": str(source), "target_transformers": "4.57.3",
-        "change": "rope_parameters -> rope_theta + rope_scaling; weights unchanged"
-    }, indent=2))
+    (output / "compatibility.json").write_text(
+        json.dumps(
+            {
+                "source": str(source),
+                "target_transformers": "4.57.3",
+                "change": "rope_parameters -> rope_theta + rope_scaling; weights unchanged",
+            },
+            indent=2,
+        )
+    )
     return output
 
 

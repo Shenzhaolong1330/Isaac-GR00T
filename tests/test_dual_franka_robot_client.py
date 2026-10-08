@@ -16,7 +16,7 @@ examples.__path__.append(str(Path(__file__).parents[1] / "examples"))
 # isort: split
 
 from examples.dual_franka import inference_dual_ee14 as client  # noqa: E402
-from examples.dual_franka.robot_control import (  # noqa: E402
+from examples.dual_franka.support.robot_control import (  # noqa: E402
     execute_chunk,
     execution_commands,
     gripper_width,
@@ -97,7 +97,8 @@ def test_raw_observation_and_action_contract():
         client.validate_action(action)
 
 
-def test_replay_never_imports_hardware(tmp_path, monkeypatch):
+@pytest.mark.parametrize("timestamped", [False, True])
+def test_replay_never_imports_hardware(tmp_path, monkeypatch, timestamped):
     fixture = tmp_path / "fixture.npz"
     np.savez(
         fixture,
@@ -114,19 +115,23 @@ def test_replay_never_imports_hardware(tmp_path, monkeypatch):
     monkeypatch.setattr(builtins, "__import__", guard)
     policy = SimpleNamespace(infer=lambda *a, **kw: (np.zeros((40, 14)), 0.01), close=lambda: None)
     monkeypatch.setattr(client, "Client", lambda _: policy)
-    client.run(
-        {
-            "fixture": str(fixture),
-            "server": {},
-            "runtime": {
-                "mode": "replay",
-                "execute": False,
-                "iterations": 1,
-                "output": str(tmp_path / "output"),
-            },
-        }
-    )
-    assert '"executed": false' in (tmp_path / "output/steps.jsonl").read_text()
+    config = {
+        "fixture": str(fixture),
+        "server": {},
+        "runtime": {
+            "mode": "replay",
+            "execute": False,
+            "iterations": 1,
+            "output": str(tmp_path / "output"),
+            "timestamp_output": timestamped,
+        },
+    }
+    count = 2 if timestamped else 1
+    for _ in range(count):
+        client.run(config)
+    logs = list((tmp_path / "output").glob("*/steps.jsonl" if timestamped else "steps.jsonl"))
+    assert len(logs) == count
+    assert all('"executed": false' in log.read_text() for log in logs)
 
 
 def test_timeout_socket_replacement_closes_previous():
@@ -145,7 +150,7 @@ def test_timeout_socket_replacement_closes_previous():
 
 
 def test_rpc_rotation_is_left_multiplication():
-    from examples.dual_franka.dual_franka_robotiq_rpc_client import _pose_from_delta
+    from examples.dual_franka.support.dual_franka_robotiq_rpc_client import _pose_from_delta
     from scipy.spatial.transform import Rotation
 
     current = [1, 2, 3, 0.2, -0.1, 0.3]
